@@ -229,15 +229,15 @@ Results:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     Claude / AI Assistant                    │
+│                     Claude / AI Assistant                   │
 └────────────────────────┬────────────────────────────────────┘
                          │ MCP Protocol
                          │
 ┌────────────────────────▼────────────────────────────────────┐
 │                  openEHR MCP Server (FastMCP)               │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
-│  │   EHR Tools  │  │ Query Tools  │  │Medical Coding│     │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘     │
+│  ┌──────────────┐  ┌──────────────┐ ┌───────────────┐       │
+│  │   EHR Tools  │  │ Query Tools  │ │Medical Coding │       │
+│  └──────┬───────┘  └───────┬──────┘ └─────────┬─────┘       │
 └─────────┼──────────────────┼──────────────────┼─────────────┘
           │                  │                  │
           ▼                  ▼                  ▼
@@ -731,14 +731,12 @@ Found 3 ICD-10 codes:
 3. R06.02 - Shortness of breath (86.4% match)
 **In Claude Desktop:**
 
-```
+
 Suggest ICD-10 codes for: "Patient presents with persistent 
 dry cough, mild fever, and shortness of breath"
 ```
 
 Claude will use `suggest_icd_codes` to return relevant ICD-10 codes with similarity scores.
-
----
 
 ## 🛠️ Troubleshooting
 
@@ -749,8 +747,8 @@ Claude will use `suggest_icd_codes` to return relevant ICD-10 codes with similar
 ```bash
 # Check if services are running
 docker compose ps
-
-# Restart services or "Collection not found"**
+```
+Restart services or "Collection not found"
 
 This means ICD-10 embeddings are not loaded in Qdrant.
 
@@ -850,4 +848,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
+## Authors
+- [Abhishek](https://github.com/abhishekmallav)
+- [Ayush](https://github.com/)
+- [Anish](https://github.com/)
+- [Prathamesh](https://github.com/)
+
+---
 **Built with ❤️ for better healthcare data interoperability**
