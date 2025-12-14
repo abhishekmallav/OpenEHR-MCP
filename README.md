@@ -1,420 +1,853 @@
-# openEHR MCP Server
+# 🏥 openEHR MCP Server
 
-[![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://python.org)
-[![FastMCP](https://img.shields.io/badge/FastMCP-2.7.0%2B-green.svg)](https://github.com/punkpeye/fastmcp)
-[![License](https://img.shields.io/badge/License-TODO-lightgrey.svg)](#license)
-[![Tests](https://img.shields.io/badge/Tests-Pytest-orange.svg)](https://pytest.org)
+> An intelligent bridge connecting AI assistants to Electronic Health Record (EHR) systems using the Model Context Protocol (MCP) and openEHR standards.
 
-A Model Context Protocol (MCP) server for interacting with openEHR Electronic Health Record systems, specifically designed for EHRbase integration. This server provides AI-powered medical coding capabilities and comprehensive EHR management through a standardized MCP interface.
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![FastMCP](https://img.shields.io/badge/FastMCP-2.7.0+-green.svg)](https://github.com/jlowin/fastmcp)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## Table of Contents
+This server enables AI assistants like Claude to interact seamlessly with openEHR-compliant EHR systems, providing natural language access to healthcare data while maintaining clinical standards and data privacy.
 
-- [Overview](#overview)
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Installation](#installation)
-- [Usage Examples](#usage-examples)
-- [Configuration](#configuration)
-- [Project Structure](#project-structure)
-- [API Documentation](#api-documentation)
-- [Testing](#testing)
-- [Performance Notes](#performance-notes)
-- [Scalability Considerations](#scalability-considerations)
-- [Contributing](#contributing)
-- [License](#license)
+---
 
-## Overview
+## 📚 Table of Contents
 
-The openEHR MCP Server bridges the gap between AI language models and openEHR-compliant Electronic Health Record systems. It provides a standardized interface for creating, retrieving, updating, and querying health records while offering intelligent medical coding suggestions using machine learning models.
+- [Technologies Overview](#-technologies-overview)
+  - [Model Context Protocol (MCP)](#model-context-protocol-mcp)
+  - [openEHR](#openehr)
+  - [Qdrant Vector Database](#qdrant-vector-database)
+- [How This Project Uses These Technologies](#-how-this-project-uses-these-technologies)
+- [Features & Capabilities](#-features--capabilities)
+- [Architecture](#-architecture)
+- [Getting Started](#-getting-started)
+- [Documentation](#-documentation)
+- [Contributing](#-contributing)
 
-This server is particularly useful for:
-- Healthcare applications requiring structured data entry
-- Clinical decision support systems
-- Medical coding automation
-- EHR integration projects
-- Healthcare AI applications
+---
 
-## Features
+## 🔬 Technologies Overview
 
-### Core EHR Operations
-- **Template Management**: List, retrieve, and generate example compositions from openEHR templates
-- **EHR Lifecycle**: Create, read, update, and delete Electronic Health Records
-- **Composition Management**: Full CRUD operations for openEHR compositions
-- **AQL Queries**: Execute Archetype Query Language (AQL) queries against the EHR database
+### Model Context Protocol (MCP)
 
-### AI-Powered Medical Coding
-- **ICD-10 Code Suggestions**: Semantic search for relevant ICD-10 codes based on clinical text
-- **Vector Database Integration**: Uses Qdrant for fast similarity search
-- **Gemini AI Integration**: Optional LLM-powered clinical text refinement
-- **Sentence Transformers**: Advanced embedding models for medical text understanding
+**What is MCP?**
 
-### User Interface
-- **Streamlit Frontend**: Complete web-based UI for EHR management and testing
-- **Blood Pressure Forms**: Specialized forms for vital signs capture
-- **Template Upload**: Direct template (.opt) file upload functionality
-- **Real-time Validation**: Immediate feedback on data entry and API responses
+The Model Context Protocol (MCP) is an open protocol developed by Anthropic that standardizes how AI applications communicate with external data sources and tools. It acts as a universal adapter, allowing Large Language Models (LLMs) to access context from various systems in a secure, controlled manner.
 
-### Developer Experience
-- **MCP Protocol**: Standard Model Context Protocol for AI integration
-- **Async Architecture**: High-performance asynchronous operations
-- **Comprehensive Logging**: Detailed logging with configurable levels
-- **Plugin System**: Extensible transport plugin architecture
+**Key Concepts:**
 
-## Tech Stack
+- **Protocol-Based Communication**: MCP defines a standard way for AI models to request and receive information
+- **Tool Execution**: AI can execute predefined functions (tools) to perform actions like database queries, API calls, or file operations
+- **Resource Management**: Provides structured access to data sources with proper authentication and permissions
+- **Prompts System**: Pre-defined conversation templates to guide AI interactions
 
-### Backend Framework
-- **FastMCP**: Model Context Protocol server framework
-- **Python 3.8+**: Core programming language
-- **AsyncIO**: Asynchronous programming support
+**Why MCP Matters:**
 
-### AI/ML Components
-- **PyTorch**: Deep learning framework for embeddings
-- **Transformers**: Hugging Face transformers library
-- **Sentence Transformers**: Specialized embedding models
-- **Qdrant**: Vector database for semantic search
-- **LangChain Google GenAI**: Gemini AI integration
+Traditional AI integrations require custom code for each data source. MCP eliminates this by providing:
+- 🔒 **Security**: Controlled access to sensitive systems with proper authentication
+- 🔄 **Standardization**: One protocol for all integrations
+- 🚀 **Scalability**: Easy to add new tools and data sources
+- 🛡️ **Safety**: Built-in guardrails for AI actions
 
-### Web Framework
-- **Streamlit**: Interactive web application framework
-- **HTTPX**: Modern HTTP client library
+**Learn More:**
+- Official Documentation: https://modelcontextprotocol.io/
+- Protocol Specification: https://spec.modelcontextprotocol.io/
 
-### Data & Configuration
-- **JSON**: Primary data exchange format
-- **Environment Variables**: Configuration management
-- **Python-dotenv**: Environment variable loading
+### openEHR
 
-### Testing & Quality
-- **Pytest**: Testing framework with async support
-- **Pytest-asyncio**: Async test utilities
-- **Pytest-cov**: Code coverage reporting
+**What is openEHR?**
 
-## Installation
+openEHR (open Electronic Health Record) is an open-source technology for electronic health records and health data management. It's not just a standard—it's a comprehensive framework for building future-proof healthcare information systems.
+
+**Core Architecture:**
+
+1. **Two-Level Modeling**:
+   - **Reference Model (RM)**: Stable information structures (like "Observation", "Composition")
+   - **Archetypes**: Reusable clinical content definitions (like "Blood Pressure", "Lab Result")
+   - **Templates**: Specific use-case combinations of archetypes
+
+2. **Key Components**:
+   - **EHR**: Electronic Health Record container for patient data
+   - **Composition**: Document containing clinical information (visit note, lab result, etc.)
+   - **AQL (Archetype Query Language)**: SQL-like language for querying health data
+
+**Why openEHR?**
+
+- 📊 **Semantic Interoperability**: Data means the same thing across systems
+- 🔄 **Future-Proof**: Clinical knowledge separated from technical implementation
+- 🌍 **International Standards**: ISO 13606 compliant
+- 🔓 **Vendor Independence**: Open specifications prevent lock-in
+
+**Real-World Example:**
+
+```
+Blood Pressure (Archetype)
+├── Systolic: 120 mmHg
+├── Diastolic: 80 mmHg
+├── Position: Sitting
+└── Time: 2025-12-14 10:30:00
+```
+
+**Learn More:**
+- Official Website: https://www.openehr.org/
+- Clinical Knowledge Manager: https://ckm.openehr.org/
+- Specifications: https://specifications.openehr.org/
+
+### Qdrant Vector Database
+
+**What is Qdrant?**
+
+Qdrant is a high-performance vector database designed for similarity search and AI applications. It stores data as high-dimensional vectors (embeddings) and enables fast semantic search based on meaning rather than exact keyword matches.
+
+**How Vector Search Works:**
+
+1. **Text Embeddings**: Convert text to numerical vectors (e.g., "chest pain" → [0.23, -0.45, 0.67, ...])
+2. **Semantic Similarity**: Similar concepts have similar vectors
+3. **Fast Retrieval**: Find nearest neighbors in milliseconds
+
+**Example:**
+
+```
+Query: "patient has persistent cough and fever"
+Embedding: [0.12, 0.45, -0.23, ...]
+
+Qdrant finds similar vectors:
+✓ R05 - Cough (similarity: 91.2%)
+✓ R50.9 - Fever, unspecified (similarity: 88.7%)
+✓ J00 - Acute nasopharyngitis (similarity: 85.3%)
+```
+
+**Why Qdrant?**
+
+- ⚡ **Performance**: Written in Rust, optimized for speed
+- 🎯 **Accuracy**: Advanced filtering and scoring capabilities
+- 🔧 **Easy Integration**: REST API and Python client
+- 💾 **Scalability**: Handles millions of vectors efficiently
+- 🐳 **Docker-Ready**: Simple deployment
+
+**Learn More:**
+- Official Documentation: https://qdrant.tech/documentation/
+- GitHub Repository: https://github.com/qdrant/qdrant
+
+---
+
+## 🏗️ How This Project Uses These Technologies
+
+### 1️⃣ FastMCP Integration
+
+**FastMCP** is a Python framework that simplifies building MCP servers. We use it to:
+
+```python
+from fastmcp import FastMCP
+
+mcp = FastMCP("openEHR")
+
+@mcp.tool()
+def openehr_ehr_create(subject_id: str) -> dict:
+    """Create a new Electronic Health Record"""
+    # Implementation connects to EHRbase API
+    return {"ehr_id": "...", "subject_id": subject_id}
+```
+
+**Our Implementation:**
+- 🔧 **13 MCP Tools**: CRUD operations for EHRs, compositions, templates, and queries
+- 💬 **1 MCP Prompt**: Pre-configured vital signs capture workflow
+- 🤖 **AI-Powered Medical Coding**: ICD-10 code suggestion using semantic search
+
+### 2️⃣ openEHR & EHRbase Integration
+
+**EHRbase** is the production-grade openEHR REST API implementation we connect to.
+
+**Our Workflow:**
+
+```
+AI Request → MCP Server → EHRbase API → PostgreSQL Database
+              ↓
+         Validates against
+         openEHR Templates
+```
+
+**What We Handle:**
+- ✅ Template validation and management
+- ✅ EHR lifecycle (create, retrieve, query)
+- ✅ Composition CRUD operations
+- ✅ AQL query execution
+- ✅ Multiple JSON formats (flat, canonical, structured)
+
+### 3️⃣ Qdrant Vector Database for Medical Coding
+
+**AI-Powered ICD-10 Code Suggestion:**
+
+We use Qdrant to store 94,444+ ICD-10 codes as vector embeddings, enabling intelligent medical coding:
+
+```
+Clinical Text: "Patient with chronic cough and fever"
+        ↓
+  Sentence Transformer (all-mpnet-base-v2)
+        ↓
+  Vector Embedding [768 dimensions]
+        ↓
+  Qdrant Semantic Search
+        ↓
+Results:
+  • R05 - Cough (91.2% match)
+  • R50.9 - Fever (88.7% match)
+```
+
+**Optional Enhancement:**
+- 🤖 Gemini AI refinement for complex multi-condition queries
+- 📊 Batch processing for multiple conditions
+
+---
+
+## ✨ Features & Capabilities
+
+### Core MCP Tools
+
+| Tool | Description | Use Case |
+|------|-------------|----------|
+| `openehr_template_list` | List all available openEHR templates | Discover available clinical document types |
+| `openehr_template_get` | Retrieve specific template definition | Understand template structure |
+| `openehr_template_example_composition` | Generate example composition | See sample data format |
+| `openehr_ehr_create` | Create new Electronic Health Record | Register new patient |
+| `openehr_ehr_get` | Retrieve EHR by ID | Access patient record |
+| `openehr_ehr_list` | List all EHRs | Browse patient records |
+| `openehr_ehr_get_by_subject` | Find EHR by patient identifier | Lookup by medical record number |
+| `openehr_composition_create` | Create clinical document | Record vital signs, lab results, notes |
+| `openehr_composition_get` | Retrieve clinical document | View historical data |
+| `openehr_composition_update` | Update clinical document | Correct or amend records |
+| `openehr_composition_delete` | Delete clinical document | Remove erroneous entries |
+| `openehr_query_adhoc` | Execute AQL query | Complex data retrieval |
+| `suggest_icd_codes` | AI-powered ICD-10 suggestions | Automated medical coding |
+
+### MCP Prompts
+
+- **`vital_signs_capture`**: Guided workflow for recording vital signs with proper validation
+
+---
+
+## 🏛️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Claude / AI Assistant                    │
+└────────────────────────┬────────────────────────────────────┘
+                         │ MCP Protocol
+                         │
+┌────────────────────────▼────────────────────────────────────┐
+│                  openEHR MCP Server (FastMCP)               │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+│  │   EHR Tools  │  │ Query Tools  │  │Medical Coding│     │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘     │
+└─────────┼──────────────────┼──────────────────┼─────────────┘
+          │                  │                  │
+          ▼                  ▼                  ▼
+  ┌───────────────┐  ┌───────────────┐  ┌──────────────┐
+  │   EHRbase     │  │  PostgreSQL   │  │   Qdrant     │
+  │ (openEHR API) │  │   Database    │  │  Vector DB   │
+  └───────────────┘  └───────────────┘  └──────────────┘
+```
+
+---
+
+## 🚀 Getting Started
 
 ### Prerequisites
 
-1. **Python 3.8 or higher**
-2. **EHRbase server** running and accessible
-3. **Qdrant vector database** (for medical coding features)
-4. **Optional**: Gemini API key for enhanced medical coding
+#### Software Requirements
 
-### Step-by-Step Installation
+Before you begin, ensure you have:
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd openehr-mcp-server
-   ```
+- **Python 3.12+** - For running the MCP server
+- **Git** - For cloning the repository
+- **Docker & Docker Compose** - For running backend services
+- **Claude Desktop** (or another MCP-compatible client) - For AI assistant integration
 
-2. **Create and activate virtual environment**
-   ```bash
-   python -m venv .venv
-   
-   # On Windows
-   .venv\Scripts\activate
-   
-   # On macOS/Linux
-   source .venv/bin/activate
-   ```
+#### Backend Services (All Included in Docker Compose)
 
-3. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+The project includes a complete Docker Compose setup that automatically configures:
 
-4. **Install test dependencies (optional)**
-   ```bash
-   pip install -r requirements-test.txt
-   ```
+1. **EHRbase Server** (`localhost:8080`)
+   - Production-grade openEHR REST API implementation
+   - Handles EHR records, compositions, and templates
+   - Provides Swagger UI for API exploration
 
-5. **Set up environment variables**
-   ```bash
-   # Create .env file
-   echo "EHRBASE_URL=http://localhost:8080/ehrbase/rest" > .env
-   echo "DEFAULT_EHR_ID=your-default-ehr-id" >> .env
-   echo "GEMINI_API_KEY=your-gemini-api-key" >> .env  # Optional
-   ```
+2. **PostgreSQL Database** (`localhost:5432`)
+   - Database backend for EHRbase
+   - Stores all EHR data with openEHR schema
+   - Pre-configured with required extensions
 
-6. **Start Qdrant (for medical coding)**
-   ```bash
-   # Using Docker
-   docker run -p 6333:6333 qdrant/qdrant
-   ```
+3. **Qdrant Vector Database** (`localhost:6333`)
+   - Stores ICD-10 code embeddings (94,444+ codes)
+   - Enables semantic search for medical coding
+   - REST API on port 6333, gRPC on port 6334
+   - ⚠️ **Requires ICD-10 embeddings to be loaded before using `suggest_icd_codes` tool**
 
-## Usage Examples
+> 💡 **Everything is pre-configured!** The `docker-compose.yml` file in the `docker-compose/` directory includes all three services with proper networking and initialization scripts.
 
-### Running the MCP Server
+### Quick Setup (3 Steps)
+
+#### Step 1: Clone and Install
 
 ```bash
-# Start with stdio transport (default)
-python src/openehr_mcp_server.py
+# Clone the repository
+git clone https://github.com/yourusername/openehr-mcp-server.git
+cd openehr-mcp-server
 
-# List available transports
-python src/openehr_mcp_server.py --list-transports
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-# Use specific transport
-python src/openehr_mcp_server.py --transport stdio
+# Install dependencies
+pip install -r requirements.txt
 ```
 
-### Running the Streamlit Frontend
+#### Step 2: Configure Environment
 
 ```bash
-# Start the web interface
-streamlit run APP.py
+# Copy example environment file
+cp .env.example .env
+
+# Edit .env and add your API key
+# GEMINI_API_KEY=your_actual_api_key_here
 ```
 
-### Basic MCP Tool Usage
+> 📖 **For detailed setup instructions**, see [SETUP.md](SETUP.md)
 
-The server provides several MCP tools that can be called by AI assistants:
+#### Step 3: Start Services
 
-```python
-# List all available templates
-await openehr_template_list()
+```bash
+# Start EHRbase and Qdrant
+cd docker-compose
+docker compose up -d
 
-# Get a specific template
-await openehr_template_get("patient_visit_template")
-
-# Create a new EHR
-await openehr_ehr_create()
-
-# Suggest ICD-10 codes
-await suggest_icd_codes("patient has chest pain and shortness of breath")
+# Verify services are running
+docker compose ps
 ```
 
-### AQL Query Example
+### Configure Claude Desktop
 
-```python
-# Execute an AQL query
-query = """
-SELECT 
-    c/uid/value AS composition_uid,
-    c/name/value AS composition_name
-FROM EHR e 
-CONTAINS COMPOSITION c
-WHERE e/ehr_id/value = $ehr_id
-"""
+**1. Locate your Claude Desktop config file:**
 
-await openehr_query_adhoc(query, {"ehr_id": "your-ehr-id"})
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+- **Linux**: `~/.config/Claude/claude_desktop_config.json`
+
+**2. Copy and customize your MCP configuration:**
+
+```bash
+# Copy the example config
+cp mcp-config.example.json mcp-config.json
+
+# Edit with your actual project paths
+# Replace /path/to/your/project with your installation directory
 ```
 
-## Configuration
+**3. Add to Claude Desktop config:**
 
-### Environment Variables
+```json
+{
+  "mcpServers": {
+    "openEHR": {
+      "command": "/path/to/your/project/venv/bin/python",
+      "args": ["/path/to/your/project/src/openehr_mcp_server.py"],
+      "env": {
+        "EHRBASE_URL": "http://localhost:8080/ehrbase/rest",
+        "EHRBASE_JSON_FORMAT": "wt_flat",
+        "PYTHONPATH": "/path/to/your/project/src"
+      }
+    }
+  }
+}
+```
 
-| Variable | Description | Default | Required |
-|----------|-------------|---------|----------|
-| `EHRBASE_URL` | EHRbase server base URL | `http://localhost:8080/ehrbase/rest` | Yes |
-| `DEFAULT_EHR_ID` | Default EHR ID for operations | None | No |
-| `GEMINI_API_KEY` | Google Gemini API key | None | No |
-| `LOG_LEVEL` | Logging level | `INFO` | No |
+**4. Restart Claude Desktop**
 
-### Medical Coding Configuration
+> 📖 **For detailed Claude Desktop setup and testing**, see [DOCS/MCP_TEST_GUIDE.md](DOCS/MCP_TEST_GUIDE.md)
 
-The medical coding service requires:
-- **Qdrant server** running at `localhost:6333`
-- **ICD-10 vector collection** named `icd_mpnet_basev2`
-- **Sentence transformer model**: `sentence-transformers/all-mpnet-base-v2`
+---
 
-### Streamlit Configuration
+## 🔧 Detailed Setup & Configuration
 
-The web interface can be configured through the sidebar:
-- **EHRbase URL**: Server endpoint
-- **Extra Headers**: Additional HTTP headers in JSON format
-- **Template Selection**: Choose from available templates
+### Initial Setup Steps
 
-## Project Structure
+#### 1. Upload openEHR Templates
+
+Templates define the structure of clinical documents. Upload the included vital signs template:
+
+```bash
+# Upload the default template
+python scripts/upload_template.py
+
+# Or specify a custom template
+python scripts/upload_template.py --template ehr-templates/patient_visit_template.opt
+```
+
+**Verify template upload:**
+
+Visit http://localhost:8080/ehrbase/rest/openehr/v1/definition/template/adl1.4
+
+#### 2. Create an Electronic Health Record (EHR)
+
+Before storing clinical data, you need an EHR container:
+
+```bash
+# Create EHR with random subject ID
+python scripts/create_ehr.py
+
+# Or create with specific patient identifier
+python scripts/create_ehr.py --subject-id "MRN-12345"
+```
+
+The script will output the EHR ID - save this for future use.
+
+#### 3. Set Up ICD-10 Vector Database (Required for Medical Coding)
+
+**⚠️ IMPORTANT**: The `suggest_icd_codes` MCP tool **requires** ICD-10 embeddings to be loaded in Qdrant before it can perform semantic search.
+
+**Steps to load embeddings:**
+
+```bash
+# 1. Ensure Qdrant is running
+curl http://localhost:6333/healthz
+
+# 2. Prepare ICD-10 dataset (diagnosis.csv)
+# Place your CSV file in the project root directory or specify path with --csv
+# Required columns: code, short, long
+# Example sources: WHO ICD-10 catalog, CMS, or other medical coding databases
+
+# 3. Load embeddings into Qdrant (from project root)
+python scripts/embedding.py
+
+# Or specify custom CSV location
+python scripts/embedding.py --csv /path/to/your/diagnosis.csv
+
+# Use a different embedding model
+python scripts/embedding.py --model sentence-transformers/all-MiniLM-L6-v2
+```
+
+**What this does:**
+- Converts 94,444+ ICD-10 codes into vector embeddings using the `all-mpnet-base-v2` model
+- Stores embeddings in Qdrant collection `icd_mpnet_basev2`
+- Enables semantic similarity search (e.g., "chest pain" → ICD codes)
+
+**Verification:**
+
+```bash
+# Check if collection exists
+curl http://localhost:6333/collections
+
+# Check collection size
+curl http://localhost:6333/collections/icd_mpnet_basev2
+```
+
+> 📝 **Note**: 
+> - Embedding generation requires the ICD-10 dataset CSV file and takes 10-15 minutes
+> - The `suggest_icd_codes` tool will not work without loaded embeddings
+> - If you don't need medical coding, you can skip this step
+
+### JSON Format Configuration
+
+The MCP server supports multiple JSON serialization formats:
+
+| Format | Description | Use Case |
+|--------|-------------|----------|
+| `wt_flat` (default) | Simplified flat structure | Easier for AI to understand |
+| `canonical` | Standard openEHR JSON | Maximum compatibility |
+| `wt_structured` | Structured web template | Complex nested data |
+
+Configure via environment variable:
+
+⚠️ **Prerequisites**: ICD-10 embeddings must be loaded in Qdrant (see setup step 3)
+
+```bash
+# Test ICD-10 code suggestion
+python tests/test_icd_coding.py
+
+# Test with MCP protocol
+python tests/test_mcp_cholera.py
+
+# If embeddings are not loaded, these tests will fail with:
+# "Collection not found" or "No results returned"
+## 🧪 Testing & Validation
+
+### Run Integration Tests
+
+```bash
+# Install test dependencies
+pip install -r requirements-test.txt
+
+# Run all tests
+pytest tests/ -v
+
+# Run specific test file
+pytest tests/test_ehr_client.py -v
+
+# Run with coverage
+pytest tests/ --cov=src --cov-report=html
+```
+
+### Test Medical Coding Feature
+
+```bash
+# Test ICD-10 code suggestion
+python tests/test_icd_coding.py
+
+# Test with MCP protocol
+python tests/test_mcp_cholera.py
+```
+
+### Verify Services
+
+```bash
+# Check Docker services
+docker compose ps
+
+# Test EHRbase
+curl http://localhost:8080/ehrbase/rest/openehr/v1/definition/template/adl1.4
+
+# Test Qdrant
+curl http://localhost:6333/healthz
+
+# View service logs
+docker compose logs -f ehrbase
+docker compose logs -f qdrant
+```
+
+### Optional: Launch Streamlit Web UI
+
+For a graphical interface to interact with EHRbase:
+
+```bash
+# Install streamlit if not already installed
+pip install streamlit
+
+# Launch the web UI
+streamlit run app.py
+```
+
+The Streamlit UI provides a browser-based interface to:
+- 📋 List and manage openEHR templates
+- 🏥 Create and retrieve EHRs
+- 📝 Create, update, and delete compositions
+- 🔍 Execute AQL queries
+- 📊 View JSON data in a user-friendly format
+
+Access at: http://localhost:8501
+
+---
+
+## 📖 Documentation
+
+### Comprehensive Guides
+
+- **[SETUP.md](SETUP.md)** - Complete setup guide with environment configuration
+- **[DOCS/MCP_TEST_GUIDE.md](DOCS/MCP_TEST_GUIDE.md)** - Claude Desktop testing and troubleshooting
+- **[requirements.txt](requirements.txt)** - Python dependencies
+- **[docker-compose/docker-compose.yml](docker-compose/docker-compose.yml)** - Service orchestration
+
+### API References
+
+- **EHRbase API**: http://localhost:8080/ehrbase/swagger-ui/index.html
+- **Qdrant API**: https://qdrant.tech/documentation/
+- **MCP Protocol**: https://spec.modelcontextprotocol.io/
+
+### Project Structure
 
 ```
 openehr-mcp-server/
 ├── src/                          # Source code
-│   ├── ehrbase/                  # EHRbase client library
-│   │   ├── __init__.py          # Package initialization
-│   │   ├── client.py            # Main facade client
-│   │   ├── composition_client.py # Composition operations
-│   │   ├── ehr_client.py        # EHR operations
-│   │   ├── http_client.py       # HTTP client wrapper
-│   │   ├── query_client.py      # AQL query operations
-│   │   ├── template_client.py   # Template operations
-│   │   └── format_config.py     # Format configuration
-│   ├── utils/                   # Utility modules
-│   │   └── logging_utils.py     # Logging configuration
-│   ├── medical_coding.py        # AI-powered medical coding
+│   ├── openehr_mcp_server.py    # Main MCP server
+│   ├── medical_coding.py        # ICD-10 coding logic
 │   ├── mcp_prompts.py          # MCP prompt definitions
-│   └── openehr_mcp_server.py   # Main MCP server
+│   └── ehrbase/                # EHRbase API clients
+├── scripts/                    # Utility scripts
+│   ├── create_ehr.py          # EHR creation
+│   ├── upload_template.py     # Template upload
+│   ├── embedding.py           # ICD-10 embedding generator
+│   └── vector_search.py       # Vector search utilities
 ├── tests/                       # Test suite
-│   ├── conftest.py             # Pytest configuration
-│   ├── pytest.ini             # Test settings
-│   └── test_*.py               # Test modules
-├── APP.py                      # Streamlit web interface
-├── requirements.txt            # Production dependencies
-├── requirements-test.txt       # Test dependencies
-└── README.md                   # This file
+├── docker-compose/             # Docker services configuration
+│   └── docker-compose.yml      # EHRbase + PostgreSQL + Qdrant
+├── ehr-templates/              # openEHR templates (.opt files)
+├── DOCS/                       # Documentation
+│   ├── SETUP.md               # Detailed setup guide
+│   └── MCP_TEST_GUIDE.md      # Testing guide
+├── app.py                      # Streamlit Web UI for EHRbase (optional)
+├── diagnosis.csv               # ICD-10 dataset (place here or specify path)
+├── .env.example               # Environment template
+├── mcp-config.example.json    # MCP configuration template
+├── requirements.txt           # Python dependencies
+└── README.md                  # This file
 ```
-
-### Key Components
-
-- **EHRbase Client**: Modular client library with specialized clients for different operations
-- **Medical Coding Service**: AI-powered ICD-10 code suggestion using vector similarity
-- **MCP Server**: FastMCP-based server implementing the Model Context Protocol
-- **Streamlit App**: Complete web interface for testing and demonstration
-- **Transport Plugins**: Extensible system for different communication protocols
-
-## API Documentation
-
-### MCP Tools
-
-The server exposes the following MCP tools:
-
-#### Template Operations
-- `openehr_template_list()`: List all available templates
-- `openehr_template_get(template_id)`: Get specific template
-- `openehr_template_example_composition(template_id)`: Generate example composition
-
-#### EHR Operations
-- `openehr_ehr_create(ehr_status?)`: Create new EHR
-- `openehr_ehr_get(ehr_id)`: Retrieve EHR by ID
-- `openehr_ehr_list()`: List all EHRs
-- `openehr_ehr_get_by_subject(subject_id, subject_namespace)`: Get EHR by subject
-
-#### Composition Operations
-- `openehr_composition_create(composition_data, ehr_id?)`: Create composition
-- `openehr_composition_get(composition_uid, ehr_id?)`: Get composition
-- `openehr_composition_update(composition_uid, composition_data, ehr_id?)`: Update composition
-- `openehr_composition_delete(preceding_version_uid, ehr_id?)`: Delete composition
-
-#### Query Operations
-- `openehr_query_adhoc(query, query_parameters?)`: Execute AQL query
-
-#### Medical Coding
-- `suggest_icd_codes(clinical_text, limit?, use_gemini?)`: Suggest ICD-10 codes
-
-### Response Formats
-
-All tools return JSON-formatted responses with consistent error handling:
-
-```json
-{
-  "data": "...",
-  "error": null
-}
-```
-
-Error responses include detailed error messages:
-
-```json
-{
-  "error": "Detailed error description",
-  "data": null
-}
-```
-
-## Testing
-
-### Running Tests
-
-```bash
-# Run all tests
-pytest
-
-# Run with coverage
-pytest --cov=src
-
-# Run specific test file
-pytest tests/test_openehr_mcp_server.py
-
-# Run with verbose output
-pytest -v
-```
-
-### Test Configuration
-
-- **Async Support**: All tests support async operations
-- **EHRbase Integration**: Tests require running EHRbase server
-- **Logging**: Comprehensive test logging enabled
-- **Coverage**: Code coverage reporting available
-
-### Test Structure
-
-```
-tests/
-├── conftest.py                 # Shared test configuration
-├── test_openehr_mcp_server.py  # MCP server integration tests
-├── test_ehr_client.py          # EHR client tests
-├── test_composition_client.py  # Composition client tests
-├── test_query_client.py        # Query client tests
-└── test_template_client.py     # Template client tests
-```
-
-## Performance Notes
-
-### Optimization Strategies
-
-- **Async Architecture**: All I/O operations are asynchronous for better concurrency
-- **Connection Pooling**: HTTP client uses connection pooling for efficiency
-- **Lazy Loading**: Medical coding service initializes only when needed
-- **Vector Caching**: Qdrant provides efficient vector similarity search
-- **Error Handling**: Comprehensive error handling prevents cascading failures
-
-### Performance Characteristics
-
-- **Template Operations**: ~100-500ms depending on template complexity
-- **Composition CRUD**: ~200-1000ms depending on data size
-- **AQL Queries**: ~100ms-5s depending on query complexity
-- **Medical Coding**: ~500-2000ms including ML inference
-- **Memory Usage**: ~200-500MB base, +1-2GB with ML models loaded
-
-### Monitoring
-
-- **Structured Logging**: All operations include timing and performance metrics
-- **Error Tracking**: Detailed error logging with stack traces
-- **Request Tracing**: Full request/response logging for debugging
-
-## Scalability Considerations
-
-### Horizontal Scaling
-
-- **Stateless Design**: Server maintains no session state
-- **Database Scaling**: EHRbase can be clustered for high availability
-- **Vector Database**: Qdrant supports clustering and sharding
-- **Load Balancing**: Multiple server instances can run behind load balancer
-
-### Vertical Scaling
-
-- **Memory Requirements**: ML models require 2-4GB RAM
-- **CPU Usage**: Vector operations benefit from multi-core processors
-- **Storage**: Vector database requires SSD storage for optimal performance
-
-### Production Considerations
-
-- **Container Deployment**: Docker-ready architecture
-- **Health Checks**: Built-in health monitoring endpoints
-- **Configuration Management**: Environment-based configuration
-- **Security**: HTTPS support and authentication integration points
-
-## Contributing
-
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details on:
-
-- Code style and standards
-- Pull request process
-- Issue reporting
-- Development setup
-- Testing requirements
-
-### Quick Start for Contributors
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Ensure all tests pass
-6. Submit a pull request
-
-## License
-
-TODO: Add license information
 
 ---
 
-**Note**: This project is under active development. APIs and interfaces may change between versions. Please check the changelog for breaking changes.
+## 🖥️ Streamlit Web UI (Optional)
 
-For questions, issues, or contributions, please visit our [GitHub repository](TODO: Add repository URL).
+**`app.py`** provides a **browser-based admin interface** for direct interaction with EHRbase, complementing the MCP server for AI assistants.
+
+### What Does app.py Do?
+
+The Streamlit application (`app.py`) is a comprehensive web interface with 5 main sections:
+
+#### 1. **Templates Tab** 📋
+- **List Templates**: View all available openEHR templates in EHRbase
+- **Get Example**: Generate example FLAT JSON for any template
+- **Upload Templates**: Upload new `.opt` (Operational Template) files
+- **Preview**: View template structure and required fields
+
+#### 2. **EHRs Tab** 🏥
+- **Create EHR**: Generate new Electronic Health Records
+- **Fetch EHR**: Retrieve EHR details by ID
+- **List EHRs**: Browse all EHRs with pagination
+- **View Metadata**: See EHR status, creation time, and subject details
+
+#### 3. **Compositions Tab** 📝
+- **Create Composition**: Submit clinical data using FLAT JSON format
+  - Paste JSON directly or use generated examples
+  - Specify EHR ID and template ID
+  - Automatic validation and error handling
+- **Fetch Composition**: Retrieve existing clinical documents
+  - Search by composition UID
+  - View complete composition with all data points
+
+#### 4. **AQL Query Tab** 🔍
+- **Execute AQL Queries**: Run Archetype Query Language queries
+- **Query Builder**: 
+  - Pre-built query templates
+  - Custom query input
+  - Parameter support
+- **Results Display**: Pretty-printed JSON results with syntax highlighting
+- **Examples**: Common queries like "list all vital signs" or "find patients"
+
+#### 5. **FORM Tab** 🩺
+- **Interactive Blood Pressure Form**: User-friendly form for vital signs entry
+  - Visual input fields (no JSON required)
+  - Systolic/diastolic pressure readings
+  - Mean arterial pressure calculation
+  - Position, cuff size, and measurement method
+  - Clinical interpretation notes
+- **Automatic JSON Generation**: Converts form data to openEHR FLAT format
+- **Direct Submission**: Posts composition to EHRbase with one click
+
+### Key Features
+
+✨ **User-Friendly Interface**
+- No coding required - point-and-click operations
+- Form-based data entry for common use cases
+- Real-time validation and error messages
+
+📊 **JSON Management**
+- Pretty-printed JSON with syntax highlighting
+- Copy/paste support for quick testing
+- Visual diff between expected and actual formats
+
+⚙️ **Connection Settings** (Sidebar)
+- Configure EHRbase base URL
+- Add custom headers (authentication, audit details)
+- Test connection status
+
+🔧 **Development Tools**
+- Inspect API requests and responses
+- HTTP status codes and error messages
+- Example data generation for testing
+
+### Launch the UI
+
+```bash
+# Ensure EHRbase is running
+cd docker-compose && docker compose up -d
+
+# Launch Streamlit
+streamlit run app.py
+```
+
+Open your browser to: **http://localhost:8501**
+
+### Use Cases
+
+| Use Case | Description |
+|----------|-------------|
+| 🧪 **Testing** | Quickly test EHRbase operations without writing code |
+| 📚 **Learning** | Explore openEHR concepts visually with immediate feedback |
+| 🔧 **Development** | Debug and validate compositions before automation |
+| 👥 **Demos** | Show EHRbase capabilities to stakeholders |
+| 📝 **Data Entry** | Manual clinical data entry via forms |
+| 🔍 **Querying** | Ad-hoc data retrieval and exploration |
+
+### Example Workflow
+
+1. **Upload Template**: Use Templates tab to upload `patient_visit_template.opt`
+2. **Create EHR**: Use EHRs tab to create a new patient record
+3. **Enter Data**: Use FORM tab to input vital signs (blood pressure, etc.)
+4. **Query Data**: Use AQL tab to retrieve and analyze the stored data
+5. **Review**: View compositions in JSON format to verify structure
+
+> 💡 **Tip**: The Streamlit UI and MCP server can run simultaneously - they're independent interfaces to the same EHRbase instance. Use the UI for testing and the MCP server for AI-powered automation.
+
+---
+
+## 🎯 Usage Examples
+
+### Example 1: Create Patient Record with Vital Signs
+
+**In Claude Desktop:**
+
+```
+I need to record vital signs for patient EHR ID: abc-123-xyz
+
+Blood Pressure: 120/80 mmHg
+Heart Rate: 72 bpm
+Temperature: 98.6°F
+Respiratory Rate: 16 breaths/min
+```
+
+Claude will use the `openehr_composition_create` tool to store this data in openEHR format.
+
+### Example 2: Query Patient Data
+
+**In Claude Desktop:**
+
+```
+Show me all vital signs recordings for the last 7 days
+for EHR ID: abc-123-xyz
+```
+⚠️ **Prerequisites**: ICD-10 embeddings must be loaded in Qdrant
+
+**In Claude Desktop:**
+
+```
+Suggest ICD-10 codes for: "Patient presents with persistent 
+dry cough, mild fever, and shortness of breath"
+```
+
+**Expected Response:**
+
+```
+Found 3 ICD-10 codes:
+
+1. R05 - Cough (91.2% match)
+2. R50.9 - Fever, unspecified (88.7% match)
+3. R06.02 - Shortness of breath (86.4% match)
+**In Claude Desktop:**
+
+```
+Suggest ICD-10 codes for: "Patient presents with persistent 
+dry cough, mild fever, and shortness of breath"
+```
+
+Claude will use `suggest_icd_codes` to return relevant ICD-10 codes with similarity scores.
+
+---
+
+## 🛠️ Troubleshooting
+
+### Common Issues
+
+**Issue: "Connection refused" when accessing EHRbase**
+
+```bash
+# Check if services are running
+docker compose ps
+
+# Restart services or "Collection not found"**
+
+This means ICD-10 embeddings are not loaded in Qdrant.
+
+```bash
+# 1. Ensure Qdrant is running
+curl http://localhost:6333/healthz
+
+# 2. Check if collection exists
+curl http://localhost:6333/collections
+
+# 3. If collection is missing, load embeddings
+python scripts/embedding.py
+
+# 4. Verify collection was created
+curl http://localhost:6333/collections/icd_all_mpnet_base_v2
+```
+
+> The `suggest_icd_codes` tool requires embeddings to be pre-loaded!
+```bash
+# Upload the template
+python scripts/upload_template.py
+
+# Verify upload
+curl http://localhost:8080/ehrbase/rest/openehr/v1/definition/template/adl1.4
+```
+
+**Issue: "No ICD-10 codes found"**
+
+```bash
+# Ensure Qdrant is running
+curl http://localhost:6333/healthz
+
+# Check if collection exists
+curl http://localhost:6333/collections
+```
+
+**Issue: Claude Desktop doesn't see the MCP server**
+
+1. Check config file path is correct
+2. Verify Python path in config
+3. Restart Claude Desktop completely
+4. Check logs in Claude Desktop's console
+
+### Get Help
+
+- 📖 Check [DOCS/MCP_TEST_GUIDE.md](DOCS/MCP_TEST_GUIDE.md) for troubleshooting guide
+- 🐛 Open an issue on GitHub
+- 💬 Review EHRbase documentation: https://ehrbase.readthedocs.io/
+
+---
+
+## 🔐 Security Considerations
+
+⚠️ **Important Security Notes:**
+
+1. **API Keys**: Never commit `.env` files with real API keys
+2. **Production Use**: This setup is for development - use proper authentication for production
+3. **Data Privacy**: Ensure compliance with healthcare regulations (HIPAA, GDPR)
+4. **Network Security**: Don't expose EHRbase or Qdrant ports to the internet without proper security
+5. **AI Model Selection**: For production healthcare data, use models with strong data privacy guarantees
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🙏 Acknowledgments
+
+- **Anthropic** - For the Model Context Protocol
+- **EHRbase** - For the openEHR implementation
+- **Qdrant** - For the vector database
+- **openEHR Foundation** - For the healthcare data standards
+- **FastMCP** - For the Python MCP framework
+
+---
+
+## 📞 Support
+
+- 📖 Documentation: See [SETUP.md](SETUP.md) and [DOCS/MCP_TEST_GUIDE.md](DOCS/MCP_TEST_GUIDE.md)
+- 🌐 openEHR Community: https://discourse.openehr.org/
+- 💬 MCP Community: https://github.com/modelcontextprotocol
+
+---
+
+**Built with ❤️ for better healthcare data interoperability**
