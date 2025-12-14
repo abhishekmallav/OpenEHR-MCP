@@ -6,6 +6,15 @@ import argparse
 import sys
 from medical_coding import MedicalCodingService
 import numpy as np
+from dotenv import load_dotenv
+from pathlib import Path
+
+# Load environment variables from .env file
+env_path = Path(__file__).parent.parent / '.env'
+load_dotenv(dotenv_path=env_path)
+print(f"✅ Loaded .env from: {env_path}")  # Debug line
+print(f"   GEMINI_API_KEY present: {bool(os.getenv('GEMINI_API_KEY'))}")  # Debug line
+
 
 # Import custom logging utilities
 from utils.logging_utils import get_logger
@@ -62,7 +71,7 @@ def get_medical_coding_service():
         except Exception as e:
             logger.error(f"❌ Failed to initialize medical coding service: {e}")
             logger.error(
-                f"   This feature requires: Qdrant running at localhost:6333, ML models, and encodings directory")
+                f"   This feature requires: Qdrant running at localhost:6335, ML models, and encodings directory")
             medical_coding_service_failed = True
             return None
     return medical_coding_service
@@ -649,31 +658,24 @@ async def openehr_suggest_icd_codes(
 
     try:
         if not clinical_text or not isinstance(clinical_text, str):
-            return json.dumps({
-                "error": "Invalid clinical text",
-                "query": clinical_text
-            })
+            return "Error: Please provide valid clinical text"
 
         # ⚠️ SAFE INITIALIZATION
         try:
             coding_service = get_medical_coding_service()
         except Exception as e:
             logger.error(f"Medical coding service error: {e}")
-            return json.dumps({
-                "error": f"Medical coding service unavailable: {str(e)}",
-                "query": clinical_text
-            })
+            return f"Error: Medical coding service unavailable - {str(e)}"
 
         if coding_service is None:
-            return json.dumps({
-                "error": "Medical coding service not available. This feature requires:\n" +
-                "1. Qdrant vector database running at localhost:6333\n" +
-                "2. ML models (sentence-transformers)\n" +
-                "3. ICD-10 encodings directory with vector data\n" +
-                "When running via Docker, these are not accessible. Run locally instead.",
-                "query": clinical_text,
-                "suggested_codes": []
-            })
+            return (
+                "Error: Medical coding service not available.\n\n"
+                "This feature requires:\n"
+                "1. Qdrant vector database running at localhost:6335\n"
+                "2. ML models (sentence-transformers)\n"
+                "3. ICD-10 encodings directory with vector data\n\n"
+                "When running via Docker, these are not accessible. Run locally instead."
+            )
 
         # ⚠️ SAFE SEARCH
         try:
@@ -684,30 +686,26 @@ async def openehr_suggest_icd_codes(
             )
         except Exception as e:
             logger.error(f"Search error: {e}")
-            return json.dumps({
-                "error": f"Search failed: {str(e)}",
-                "query": clinical_text,
-                "suggested_codes": []
-            })
+            return f"Error: Search failed - {str(e)}"
 
-        response = {
-            "query": clinical_text,
-            "suggested_codes": results if results else [],
-            "count": len(results) if results else 0,
-            "error": None
-        }
+        # Simplified response format for better MCP client compatibility
+        if not results:
+            response_text = f"No ICD-10 codes found for: {clinical_text}"
+        else:
+            response_text = f"ICD-10 codes for '{clinical_text}':\n\n"
+            for i, result in enumerate(results, 1):
+                response_text += f"{i}. {result['code']} - {result['description']}\n"
+                response_text += f"   Similarity: {result['score']:.2%}\n\n"
+            response_text += f"Total: {len(results)} codes found"
 
         elapsed = time.time() - start_time
         logger.info(
             f"ICD codes: {len(results) if results else 0} in {elapsed:.2f}s")
-        return json.dumps(response)
+        return response_text
 
     except Exception as e:
         logger.error(f"Unexpected error: {e}", exc_info=True)
-        return json.dumps({
-            "error": f"Unexpected error: {str(e)}",
-            "query": clinical_text
-        })
+        return f"Error: Unexpected error occurred - {str(e)}"
 
 
 # Run the server

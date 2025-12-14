@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "openEHR": {
+      "command": "/path/to/your/project/venv/bin/python",
+      "args": ["/path/to/your/project/src/openehr_mcp_server.py"],
+      "env": {
+        "EHRBASE_URL": "http://localhost:8080/ehrbase/rest",
+        "EHRBASE_JSON_FORMAT": "wt_flat",
+        "PYTHONPATH": "/path/to/your/project/src"
+      }
+    }
+  }
+}
