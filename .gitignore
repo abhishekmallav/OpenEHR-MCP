@@ -178,4 +178,4 @@ cython_debug/
 embeddings/
 
 # MCP-cache
-.mcp-config.json
+mcp-config.json
