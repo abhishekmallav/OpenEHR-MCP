@@ -43,7 +43,7 @@ class MedicalCodingService:
     def __init__(
         self,
         model_name: str = "sentence-transformers/all-mpnet-base-v2",
-        qdrant_url: str = "http://localhost:6333",
+        qdrant_url: str = "http://localhost:6335",
         collection_name: str = "icd_mpnet_basev2",
         gemini_api_key: Optional[str] = None
     ):
@@ -159,13 +159,17 @@ class MedicalCodingService:
 
             prompt = f"""You are a certified ICD-10 coding specialist.
 
-Your goal: Extract distinct diagnostic entities from the clinical text that would be coded in ICD-10.
+Your goal: From the given *clinical interpretation text*, extract only the distinct diagnostic entities that would be coded in ICD-10.
 
 Guidelines:
-1. Use official ICD-10 terminology
-2. Exclude duplicates and overlapping terms
-3. Remove vague descriptions
-4. Output only diagnostic phrases, one per line
+1. Use official ICD-10 terminology (e.g., “Calculus of gallbladder”, “Fatty liver”, “Hydronephrosis due to calculus”).
+2. Exclude:
+   - Duplicate or overlapping terms (e.g., “Calculus of ureter” when already covered by “Hydronephrosis due to ureteric calculus”).
+   - General organ descriptions (“liver shows echogenicity”) that are not billable diagnoses.
+   - Symptom descriptions or incidental findings unless diagnostic (e.g., skip “mild”, “reactive”, “suggestive” unless part of ICD phrasing).
+3. If multiple related findings describe a single condition, **merge them** into one canonical ICD-style phrase.
+4. Output only distinct diagnostic phrases, each on a new line — no numbering, no bullets.
+5. If the text mentions gallstones or cholelithiasis, rewrite in ICD form as “Calculus of gallbladder …”.
 
 Clinical Interpretation:
 {clinical_text}
