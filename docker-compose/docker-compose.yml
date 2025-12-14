@@ -1,0 +1,90 @@
+name: ehrbase_local
+
+services:
+
+  db:
+    image: postgres:16
+    container_name: ehrbase-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ehrbase
+    volumes:
+      - ehrbase_volume:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  db-init:
+    image: postgres:16
+    container_name: ehrbase-db-init
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: postgres
+    entrypoint: >
+      bash -c "
+      psql -h db -U postgres -d ehrbase -c \"SELECT 1 FROM pg_roles WHERE rolname='ehrbase'\" | grep -q 1 ||
+      (
+        psql -h db -U postgres -d ehrbase -c \"CREATE ROLE ehrbase WITH LOGIN PASSWORD 'ehrbase';\" &&
+        psql -h db -U postgres -d ehrbase -c \"CREATE ROLE ehrbase_restricted WITH LOGIN PASSWORD 'ehrbase_restricted';\" &&
+        psql -h db -U postgres -d ehrbase -c \"GRANT ALL PRIVILEGES ON DATABASE ehrbase TO ehrbase;\" &&
+        psql -h db -U postgres -d ehrbase -c \"GRANT ALL PRIVILEGES ON DATABASE ehrbase TO ehrbase_restricted;\" &&
+        psql -h db -U postgres -d ehrbase -c \"REVOKE CREATE ON SCHEMA public FROM PUBLIC;\" &&
+        psql -h db -U postgres -d ehrbase -c \"CREATE SCHEMA IF NOT EXISTS ehr AUTHORIZATION ehrbase;\" &&
+        psql -h db -U postgres -d ehrbase -c \"GRANT USAGE ON SCHEMA ehr TO ehrbase_restricted;\" &&
+        psql -h db -U postgres -d ehrbase -c \"ALTER DEFAULT PRIVILEGES FOR USER ehrbase IN SCHEMA ehr GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ehrbase_restricted;\" &&
+        psql -h db -U postgres -d ehrbase -c \"ALTER DEFAULT PRIVILEGES FOR USER ehrbase IN SCHEMA ehr GRANT SELECT ON SEQUENCES TO ehrbase_restricted;\" &&
+        psql -h db -U postgres -d ehrbase -c \"CREATE SCHEMA IF NOT EXISTS ext AUTHORIZATION ehrbase;\" &&
+        psql -h db -U postgres -d ehrbase -c \"GRANT USAGE ON SCHEMA ext TO ehrbase_restricted;\" &&
+        psql -h db -U postgres -d ehrbase -c \"CREATE EXTENSION IF NOT EXISTS \\\"uuid-ossp\\\" SCHEMA ext;\" &&
+        psql -h db -U postgres -d ehrbase -c \"ALTER DATABASE ehrbase SET search_path TO ext, public;\" &&
+        psql -h db -U postgres -d ehrbase -c \"ALTER DATABASE ehrbase SET intervalstyle = 'iso_8601';\" &&
+        echo 'Database initialized successfully'
+      )
+      "
+    restart: "no"
+
+  ehrbase:
+    image: ehrbase/ehrbase:2.11.0
+    container_name: ehrbase
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/ehrbase
+      DB_USER_ADMIN: ehrbase
+      DB_PASS_ADMIN: ehrbase
+      DB_USER: ehrbase_restricted
+      DB_PASS: ehrbase_restricted
+      EHRBASE_AQL_EXPERIMENTAL_AQLONFOLDER_ENABLED: 'true'
+      ADMINAPI_ACTIVE: 'true'
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrantdb
+    ports:
+      - "6335:6333"
+      - "6336:6334"
+    volumes:
+      - /home/natalie/qdrant_storage:/qdrant/storage:z
+    environment:
+      - QDRANT__SERVICE__GRPC_PORT=6334
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:6333/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  ehrbase_volume:
+
