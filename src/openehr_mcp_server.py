@@ -81,12 +81,6 @@ class SafeEncoder(json.JSONEncoder):
             return float(obj)
         if isinstance(obj, np.ndarray):
             return obj.tolist()
-        try:
-            import torch
-            if isinstance(obj, torch.Tensor):
-                return obj.cpu().numpy().tolist()
-        except:
-            pass
         return super().default(obj)
 
 # TRANSPORT PLUGIN SYSTEM

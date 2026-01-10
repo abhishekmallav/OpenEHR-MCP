@@ -79,14 +79,12 @@ print("\n--- Clinical Interpretation ---\n", clinical_interpretation)
 print("\n--- Comment ---\n", comment)
 
 import os
-import torch
 from qdrant_client import QdrantClient
-from transformers import AutoTokenizer, AutoModel
+from sentence_transformers import SentenceTransformer
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import PromptTemplate
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"Device: {device}")
+print(f"💻 Using HuggingFace API for embeddings")
 
 # IMPORTANT: Set GEMINI_API_KEY environment variable before running
 # export GEMINI_API_KEY="your_api_key_here"
@@ -142,11 +140,14 @@ for q in queries:
 
 # --- Embed Queries and Retrieve ICD Codes from Qdrant ---
 
+# Initialize sentence-transformers model for embeddings
+print("\n🤖 Loading embedding model...")
+embedding_model = SentenceTransformer("sentence-transformers/all-mpnet-base-v2")
+print("✅ Model loaded\n")
+
 for text in queries:
-    # Generate embedding (mean pooling, simple & effective)
-    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=128).to(device)
-    with torch.no_grad():
-        embedding = model(**inputs).last_hidden_state.mean(dim=1).squeeze().cpu().numpy()
+    # Generate embedding using sentence-transformers
+    embedding = embedding_model.encode(text, normalize_embeddings=True)
 
     # Search in Qdrant
     results = client.query_points(

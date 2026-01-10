@@ -13,7 +13,6 @@ Usage:
 
 import argparse
 import os
-import torch
 import pandas as pd
 from sentence_transformers import SentenceTransformer
 from qdrant_client import QdrantClient
@@ -39,28 +38,14 @@ DEFAULT_QDRANT_URL = "http://localhost:6333"
 DEFAULT_BATCH_SIZE = 2000
 
 # ============================================================================
-# GPU/CUDA Detection and Setup
+# Device Setup (CPU only - using HuggingFace API for embeddings)
 # ============================================================================
 
 def setup_device():
-    """Detect and configure the best available device (CUDA, MPS, or CPU)."""
-    if torch.cuda.is_available():
-        device = torch.device("cuda")
-        gpu_name = torch.cuda.get_device_name(0)
-        gpu_memory = torch.cuda.get_device_properties(0).total_memory / (1024**3)
-        print(f"✅ CUDA GPU detected: {gpu_name}")
-        print(f"   GPU Memory: {gpu_memory:.2f} GB")
-        print(f"   Using device: cuda")
-    elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
-        device = torch.device("mps")
-        print(f"✅ Apple MPS (Metal Performance Shaders) detected")
-        print(f"   Using device: mps")
-    else:
-        device = torch.device("cpu")
-        print(f"⚠️  No GPU detected. Using CPU")
-        print(f"   Note: GPU acceleration significantly speeds up embedding generation")
-        print(f"   Using device: cpu")
-    
+    """Return CPU device - sentence-transformers will handle device selection."""
+    device = "cpu"
+    print(f"💻 Using CPU for local processing")
+    print(f"   Note: sentence-transformers will auto-detect available hardware")
     return device
 
 # ============================================================================
@@ -112,9 +97,10 @@ def load_and_prepare_data(csv_path):
 def generate_embeddings(texts, model_name, device):
     """Generate embeddings using the specified model."""
     print(f"\n🤖 Loading embedding model: {model_name}")
-    print(f"   Device: {device}")
+    print(f"   Note: sentence-transformers will auto-detect best device")
     
-    model = SentenceTransformer(model_name, device=str(device), trust_remote_code=True)
+    # Let sentence-transformers handle device selection automatically
+    model = SentenceTransformer(model_name, trust_remote_code=True)
     embedding_dim = model.get_sentence_embedding_dimension()
     
     print(f"✅ Model loaded successfully")
@@ -126,8 +112,7 @@ def generate_embeddings(texts, model_name, device):
     embeddings = model.encode(
         texts.tolist(),
         normalize_embeddings=True,
-        show_progress_bar=True,
-        device=str(device)
+        show_progress_bar=True
     )
     
     print(f"✅ Generated {len(embeddings)} embeddings")
