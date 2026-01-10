@@ -1,0 +1,200 @@
+# FastMCP Cloud Configuration
+# Deploy the openEHR MCP Server to FastMCP Cloud
+
+name: openehr-mcp-server
+description: "AI-powered bridge connecting AI assistants to openEHR Electronic Health Record systems"
+version: 1.0.0
+
+# Runtime environment
+runtime: python3.12
+
+# Entry point - main server file
+main: src/openehr_mcp_server.py
+
+# Python dependencies
+requirements: requirements.txt
+
+# Environment variables (non-sensitive configuration)
+env:
+  # Logging configuration
+  LOG_LEVEL: INFO
+  
+  # EHRbase security mode
+  EHRBASE_SECURITY: basic
+  
+  # Python environment
+  PYTHONUNBUFFERED: "1"
+  
+  # FastMCP Cloud indicator (enables cloud transport)
+  FASTMCP_CLOUD: "true"
+  
+# Secrets (sensitive data - configure via CLI or dashboard)
+# These should NEVER be committed to version control
+secrets:
+  # EHRbase connection
+  - EHRBASE_URL
+  - EHRBASE_USERNAME  
+  - EHRBASE_PASSWORD
+  - DEFAULT_EHR_ID
+  
+  # Optional: Medical coding with AI
+  - GEMINI_API_KEY
+  - QDRANT_URL
+  - QDRANT_API_KEY
+
+# Resource allocation
+resources:
+  # Memory allocation (increase if using ML models)
+  memory: 1Gi
+  
+  # CPU allocation
+  cpu: 0.5
+  
+  # Disk space for temporary files
+  disk: 2Gi
+
+# Health check configuration
+healthcheck:
+  enabled: true
+  interval: 30s
+  timeout: 10s
+  retries: 3
+
+# Autoscaling configuration
+autoscaling:
+  enabled: true
+  min_instances: 1
+  max_instances: 3
+  
+  # Scale up when CPU exceeds 70%
+  target_cpu: 70
+  
+  # Scale up when memory exceeds 80%
+  target_memory: 80
+
+# Network configuration
+network:
+  # Enable HTTPS
+  https: true
+  
+  # Custom domain (optional)
+  # domain: openehr.yourdomain.com
+  
+  # CORS configuration
+  cors:
+    enabled: true
+    origins:
+      - "*"
+
+# Logging configuration
+logging:
+  level: INFO
+  format: json
+  
+  # Log retention
+  retention_days: 30
+  
+  # Enable structured logging
+  structured: true
+
+# Monitoring and observability
+monitoring:
+  enabled: true
+  
+  # Metrics export
+  metrics:
+    enabled: true
+    interval: 60s
+  
+  # Error tracking
+  errors:
+    enabled: true
+    sample_rate: 1.0
+
+# Security settings
+security:
+  # Rate limiting
+  rate_limit:
+    enabled: true
+    requests_per_minute: 60
+    requests_per_hour: 1000
+  
+  # IP whitelist (optional - restrict access)
+  # ip_whitelist:
+  #   - "203.0.113.0/24"
+  #   - "198.51.100.0/24"
+  
+  # Authentication (optional)
+  # auth:
+  #   type: api_key
+  #   header: X-API-Key
+
+# Deployment strategy
+deployment:
+  # Rolling update strategy
+  strategy: rolling
+  
+  # Maximum unavailable during update
+  max_unavailable: 0
+  
+  # Maximum surge during update
+  max_surge: 1
+
+# Backup and disaster recovery (if applicable)
+backup:
+  enabled: false
+  # schedule: "0 2 * * *"  # Daily at 2 AM
+
+# Development/staging environments
+environments:
+  development:
+    autoscaling:
+      min_instances: 1
+      max_instances: 1
+    resources:
+      memory: 512Mi
+      cpu: 0.25
+  
+  production:
+    autoscaling:
+      min_instances: 2
+      max_instances: 5
+    resources:
+      memory: 2Gi
+      cpu: 1.0
+
+# Custom build configuration (if needed)
+build:
+  # Build-time environment variables
+  env:
+    PIP_NO_CACHE_DIR: "1"
+  
+  # Pre-install commands (if needed)
+  # before_install:
+  #   - apt-get update
+  #   - apt-get install -y some-package
+  
+  # Post-install commands
+  # after_install:
+  #   - python scripts/setup.py
+
+# Notes for deployment
+# 1. Set secrets before deploying:
+#    fastmcp secrets set EHRBASE_URL "https://your-ehrbase.com"
+#    fastmcp secrets set EHRBASE_USERNAME "your_username"
+#    fastmcp secrets set EHRBASE_PASSWORD "your_password"
+#    fastmcp secrets set DEFAULT_EHR_ID "uuid-here"
+#    fastmcp secrets set GEMINI_API_KEY "your_key" (optional)
+#
+# 2. Ensure EHRbase server is accessible from cloud
+#
+# 3. If using ICD coding (suggest_icd_codes tool):
+#    - Deploy Qdrant to cloud or use Qdrant Cloud
+#    - Upload embeddings: python scripts/upload_embeddings.py
+#    - Set QDRANT_URL and QDRANT_API_KEY secrets
+#
+# 4. Test locally first:
+#    python src/openehr_mcp_server.py
+#
+# 5. Deploy:
+#    fastmcp deploy --config fastmcp-cloud.yml

@@ -251,7 +251,23 @@ Results:
 
 ## 🚀 Getting Started
 
-### Prerequisites
+### Deployment Options
+
+**Choose your deployment method:**
+
+1. **☁️ FastMCP Cloud** - Deploy to cloud for remote access (recommended for production)
+   - 📖 [Quick Deploy Guide](DOCS/QUICK_DEPLOY.md)
+   - 📖 [Full Cloud Deployment Guide](DOCS/FASTMCP_CLOUD_DEPLOYMENT.md)
+   - No local infrastructure needed
+   - Always available, scalable
+   - Use the deployment script: `./scripts/deploy_cloud.sh`
+
+2. **💻 Local Development** - Run on your machine (recommended for development)
+   - Full control and debugging
+   - Works offline
+   - Follow the setup instructions below
+
+### Prerequisites (Local Development)
 
 #### Software Requirements
 

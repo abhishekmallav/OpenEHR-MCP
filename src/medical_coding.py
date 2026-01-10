@@ -1,206 +1,157 @@
 """
-Medical coding utilities for ICD-10 code suggestion.
-Connects to local Qdrant database for semantic search of ICD-10 codes.
+Cloud-based medical coding service for ICD-10 code retrieval.
+Uses HuggingFace embeddings and Qdrant Cloud for semantic search.
 """
 import os
-import torch
-import numpy as np
 from typing import List, Dict, Optional
-from transformers import AutoTokenizer, AutoModel
+from huggingface_hub import InferenceClient
 from qdrant_client import QdrantClient
+from langchain_google_genai import ChatGoogleGenerativeAI
+from dotenv import load_dotenv
 import logging
-import json
 
-# Setup logging
 logger = logging.getLogger(__name__)
 
-# Optional: Use Gemini for clinical interpretation refinement
-try:
-    from langchain_google_genai import ChatGoogleGenerativeAI
-    GEMINI_AVAILABLE = True
-except ImportError:
-    GEMINI_AVAILABLE = False
-    logger.warning(
-        "langchain_google_genai not installed. Gemini refinement disabled.")
-
-
-class NumpyEncoder(json.JSONEncoder):
-    """Custom JSON encoder for numpy/torch types."""
-
-    def default(self, obj):
-        if isinstance(obj, (np.integer, np.floating)):
-            return float(obj)
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        if isinstance(obj, torch.Tensor):
-            return obj.cpu().numpy().tolist()
-        return super().default(obj)
+load_dotenv()
 
 
 class MedicalCodingService:
-    """Service for AI-powered medical coding with Qdrant vector database."""
+    """Cloud-based medical coding service using HuggingFace and Qdrant Cloud."""
 
     def __init__(
         self,
-        model_name: str = "sentence-transformers/all-mpnet-base-v2",
-        qdrant_url: str = "http://localhost:6335",
-        collection_name: str = "icd_mpnet_basev2",
-        gemini_api_key: Optional[str] = None
+        hf_token: Optional[str] = None,
+        gemini_api_key: Optional[str] = None,
+        qdrant_url: Optional[str] = None,
+        qdrant_api_key: Optional[str] = None,
+        collection_name: str = "icd_mpnet_basev2"
     ):
-        """Initialize the medical coding service."""
-        self.json_encoder = NumpyEncoder
+        """Initialize the cloud medical coding service."""
+        
+        # Get credentials from environment or parameters
+        self.hf_token = hf_token or os.getenv("HF_TOKEN")
+        self.gemini_api_key = gemini_api_key or os.getenv("GEMINI_API_KEY")
+        self.qdrant_url = qdrant_url or os.getenv("QDRANT_URL")
+        self.qdrant_api_key = qdrant_api_key or os.getenv("QDRANT_API_KEY")
+        self.collection_name = collection_name
 
+        # Validate credentials
+        if not self.hf_token:
+            raise ValueError("HF_TOKEN not found in environment or parameters")
+        if not self.qdrant_url:
+            raise ValueError("QDRANT_URL not found in environment or parameters")
+        if not self.qdrant_api_key:
+            raise ValueError("QDRANT_API_KEY not found in environment or parameters")
+
+        # Initialize HuggingFace client
         try:
-            # Setup device (CUDA if available, else CPU)
-            self.device = torch.device(
-                "cuda" if torch.cuda.is_available() else "cpu")
-            logger.info(f"[MedicalCodingService] Using device: {self.device}")
-
-            # Load sentence transformer model
-            logger.info(f"[MedicalCodingService] Loading model: {model_name}")
-            try:
-                self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-                self.model = AutoModel.from_pretrained(
-                    model_name).to(self.device).eval()
-                logger.info(
-                    f"[MedicalCodingService] Model loaded successfully")
-            except Exception as e:
-                logger.error(f"Failed to load model {model_name}: {e}")
-                raise
-
-            # Connect to Qdrant
-            logger.info(
-                f"[MedicalCodingService] Connecting to Qdrant at {qdrant_url}")
-            try:
-                self.qdrant_client = QdrantClient(url=qdrant_url, timeout=10)
-                # Test connection
-                self.qdrant_client.get_collections()
-                self.collection_name = collection_name
-                logger.info(
-                    f"[MedicalCodingService] Connected to Qdrant successfully")
-            except Exception as e:
-                logger.error(
-                    f"Failed to connect to Qdrant at {qdrant_url}: {e}")
-                raise ConnectionError(
-                    f"Cannot connect to Qdrant. Make sure it's running at {qdrant_url}")
-
-            # Verify collection exists
-            try:
-                collections = self.qdrant_client.get_collections()
-                collection_names = [c.name for c in collections.collections]
-                if collection_name not in collection_names:
-                    logger.warning(
-                        f"Collection {collection_name} not found. Available: {collection_names}")
-                else:
-                    logger.info(
-                        f"[MedicalCodingService] Collection {collection_name} found")
-            except Exception as e:
-                logger.warning(f"Could not verify collection: {e}")
-
-            # Optional: Setup Gemini
-            self.llm = None
-            if gemini_api_key and GEMINI_AVAILABLE:
-                try:
-                    os.environ["GOOGLE_API_KEY"] = gemini_api_key
-                    self.llm = ChatGoogleGenerativeAI(
-                        model="gemini-2.0-flash-exp", temperature=0)
-                    logger.info(
-                        f"[MedicalCodingService] Gemini LLM initialized")
-                except Exception as e:
-                    logger.warning(
-                        f"Failed to initialize Gemini: {e}. Proceeding without Gemini.")
-
-            logger.info(f"[MedicalCodingService] Initialization complete")
-
+            self.hf_client = InferenceClient(
+                provider="auto",
+                api_key=self.hf_token,
+                model="sentence-transformers/all-mpnet-base-v2",
+            )
+            logger.info("✅ HuggingFace client initialized")
         except Exception as e:
-            logger.error(
-                f"[MedicalCodingService] Fatal initialization error: {e}")
+            logger.error(f"Failed to initialize HuggingFace client: {e}")
             raise
 
+        # Initialize Qdrant client
+        try:
+            self.qdrant_client = QdrantClient(
+                url=self.qdrant_url,
+                api_key=self.qdrant_api_key
+            )
+            # Test connection
+            collection_info = self.qdrant_client.get_collection(self.collection_name)
+            logger.info(f"✅ Qdrant connected - {collection_info.points_count} points in {self.collection_name}")
+        except Exception as e:
+            logger.error(f"Failed to connect to Qdrant: {e}")
+            raise
+
+        # Initialize Gemini (optional)
+        self.llm = None
+        if self.gemini_api_key:
+            try:
+                self.llm = ChatGoogleGenerativeAI(
+                    model="gemini-2.5-flash",
+                    temperature=1.0,
+                    max_tokens=None,
+                    timeout=None,
+                    max_retries=2,
+                )
+                logger.info("✅ Gemini LLM initialized")
+            except Exception as e:
+                logger.warning(f"Failed to initialize Gemini: {e}")
+
+    def generate_clinical_narrative(self, patient_data: Dict) -> str:
+        """Generate clinical narrative from structured patient data using Gemini."""
+        if not self.llm:
+            # Fallback: simple text generation
+            parts = []
+            if patient_data.get("doctorRemarks"):
+                parts.append(patient_data["doctorRemarks"])
+            if patient_data.get("temperature"):
+                parts.append(f"Temperature: {patient_data['temperature']}°F")
+            if patient_data.get("heartRate"):
+                parts.append(f"Heart rate: {patient_data['heartRate']} bpm")
+            return " ".join(parts) if parts else "Clinical data provided"
+
+        try:
+            messages = [
+                (
+                    "system",
+                    """You are a clinical-text normalization and enrichment engine designed to assist downstream semantic retrieval of ICD-10 diagnostic codes.
+                    Your task is to:
+                    1. Analyze structured patient vitals, observations, and clinician remarks.
+                    2. Convert them into a concise yet semantically rich clinical narrative.
+                    3. Use standardized medical terminology commonly aligned with ICD-10 indexing language.
+                    4. Explicitly describe conditions, symptoms, observations, and clinical impressions.
+                    5. Avoid assigning ICD codes directly.
+                    6. Avoid speculative or unsupported diagnoses.
+                    7. Do not include treatment plans unless explicitly stated.
+                    8. Prefer medically recognized phrasing over casual language.
+                    9. Preserve clinical neutrality (observations > conclusions).
+                    10. Optimize the output for vector embedding and semantic similarity search.
+
+                    Output requirements:
+                    - Output must be plain clinical text (no JSON, no bullet points).
+                    - Use complete sentences.
+                    - Include relevant vitals, abnormal findings, and physician observations.
+                    - Expand implicit clinical meaning where appropriate (e.g., "borderline hypertension" instead of raw BP values).
+                    - Do not mention ICD, embeddings, vectors, or databases.
+                    - Do not repeat input verbatim; rewrite and normalize it.
+
+                    Your output will be embedded and used for similarity search against an ICD-10 vector database.
+                    Accuracy, semantic density, and standardized terminology are critical."""
+                ),
+                (
+                    "human",
+                    f"Convert the following structured clinical encounter data into a semantically rich, ICD-retrieval-optimized clinical narrative.\nHere is the data: {patient_data}"
+                ),
+            ]
+            
+            ai_msg = self.llm.invoke(messages)
+            return ai_msg.content
+        except Exception as e:
+            logger.error(f"Gemini narrative generation failed: {e}")
+            # Fallback
+            return patient_data.get("doctorRemarks", str(patient_data))
+
     def text_to_embedding(self, text: str) -> List[float]:
-        """Convert text to embedding vector using mean pooling."""
+        """Convert text to embedding vector using HuggingFace."""
         try:
             if not text or not isinstance(text, str):
                 raise ValueError(f"Invalid text input: {text}")
-
+            
             text = text.strip()
             if len(text) == 0:
                 raise ValueError("Text cannot be empty")
-
-            inputs = self.tokenizer(
-                text,
-                return_tensors="pt",
-                truncation=True,
-                padding=True,
-                max_length=128
-            ).to(self.device)
-
-            with torch.no_grad():
-                embedding = self.model(
-                    **inputs).last_hidden_state.mean(dim=1).squeeze().cpu().numpy()
-
-            # Convert numpy to list of floats
-            return embedding.astype(np.float32).tolist()
-
+            
+            embedding = self.hf_client.feature_extraction(text)
+            return embedding
         except Exception as e:
             logger.error(f"Error converting text to embedding: {e}")
             raise
-
-    def refine_clinical_text_with_gemini(self, clinical_text: str) -> List[str]:
-        """Use Gemini to extract ICD-10 style diagnostic phrases."""
-        if not self.llm:
-            logger.debug("Gemini not available, returning original text")
-            return [clinical_text] if clinical_text else []
-
-        try:
-            if not clinical_text or not isinstance(clinical_text, str):
-                logger.warning(f"Invalid clinical text: {clinical_text}")
-                return [clinical_text] if clinical_text else []
-
-            prompt = f"""You are a certified ICD-10 coding specialist.
-
-Your goal: From the given *clinical interpretation text*, extract only the distinct diagnostic entities that would be coded in ICD-10.
-
-Guidelines:
-1. Use official ICD-10 terminology (e.g., “Calculus of gallbladder”, “Fatty liver”, “Hydronephrosis due to calculus”).
-2. Exclude:
-   - Duplicate or overlapping terms (e.g., “Calculus of ureter” when already covered by “Hydronephrosis due to ureteric calculus”).
-   - General organ descriptions (“liver shows echogenicity”) that are not billable diagnoses.
-   - Symptom descriptions or incidental findings unless diagnostic (e.g., skip “mild”, “reactive”, “suggestive” unless part of ICD phrasing).
-3. If multiple related findings describe a single condition, **merge them** into one canonical ICD-style phrase.
-4. Output only distinct diagnostic phrases, each on a new line — no numbering, no bullets.
-5. If the text mentions gallstones or cholelithiasis, rewrite in ICD form as “Calculus of gallbladder …”.
-
-Clinical Interpretation:
-{clinical_text}
-
-Output:
-"""
-
-            icd_response = self.llm.invoke(prompt).content.strip()
-
-            if not icd_response:
-                logger.warning("Gemini returned empty response")
-                return [clinical_text]
-
-            queries = [
-                q.strip('-• ').strip().rstrip('.')
-                for q in icd_response.split('\n')
-                if q.strip()
-            ]
-
-            if not queries:
-                logger.warning("No queries extracted from Gemini response")
-                return [clinical_text]
-
-            logger.debug(
-                f"Extracted {len(queries)} queries from clinical text")
-            return queries
-
-        except Exception as e:
-            logger.error(
-                f"Gemini refinement failed: {e}. Using original text.")
-            return [clinical_text] if clinical_text else []
 
     def search_icd_codes(
         self,
@@ -215,139 +166,70 @@ Output:
 
             if limit < 1:
                 limit = 5
-                logger.warning(f"Invalid limit value, using default: {limit}")
 
-            # Refine text if requested
-            if use_gemini_refinement and self.llm:
-                queries = self.refine_clinical_text_with_gemini(clinical_text)
-                logger.info(f"Refined queries: {queries}")
-            else:
-                queries = [clinical_text]
+            # Generate embedding
+            embedding = self.text_to_embedding(clinical_text)
 
-            if not queries:
-                logger.warning("No queries to search")
-                return []
+            # Search Qdrant
+            search_results = self.qdrant_client.query_points(
+                collection_name=self.collection_name,
+                query=embedding,
+                limit=limit,
+                with_payload=True
+            )
 
-            all_results = []
+            # Format results
+            results = []
+            for point in search_results.points:
+                code = point.payload.get("code", "N/A")
+                # Try to get description from various fields
+                description = (
+                    point.payload.get("long") or 
+                    point.payload.get("short") or 
+                    point.payload.get("description", "No description available")
+                )
+                score = float(point.score)
+                
+                results.append({
+                    "code": str(code),
+                    "description": str(description),
+                    "score": score
+                })
 
-            for query_text in queries:
-                try:
-                    # Generate embedding
-                    embedding = self.text_to_embedding(query_text)
+            logger.info(f"Found {len(results)} ICD codes for query: {clinical_text[:50]}...")
+            return results
 
-                    # Ensure embedding is a proper list of floats
-                    embedding = [float(x) for x in embedding]
-
-                    # Search Qdrant
-                    search_results = self.qdrant_client.query_points(
-                        collection_name=self.collection_name,
-                        query=embedding,
-                        limit=limit,
-                        with_payload=True
-                    )
-
-                    # Format results with proper type conversion
-                    for point in search_results.points:
-                        result = {
-                            "query": str(query_text),
-                            "code": str(point.payload.get('code', 'N/A')),
-                            "description": str(point.payload.get('short', 'N/A')),
-                            "score": float(point.score)  # Ensure float type
-                        }
-                        all_results.append(result)
-
-                except Exception as e:
-                    logger.error(
-                        f"Error searching for query '{query_text}': {e}")
-                    continue
-
-            # Sort by score and limit
-            all_results.sort(key=lambda x: x['score'], reverse=True)
-            final_results = all_results[:limit * len(queries)]
-
-            logger.info(f"Returned {len(final_results)} ICD code suggestions")
-            return final_results
-
-        except ValueError as e:
-            logger.error(f"Invalid input: {e}")
-            raise
         except Exception as e:
-            logger.error(f"Unexpected error in search_icd_codes: {e}")
+            logger.error(f"Error in search_icd_codes: {e}")
             raise
 
-    def search_icd_codes_detailed(
+    def search_icd_codes_from_patient_data(
         self,
-        clinical_text: str,
+        patient_data: Dict,
         limit: int = 5,
-        use_gemini_refinement: bool = False
+        use_gemini: bool = True
     ) -> Dict:
-        """Search with detailed results grouped by query."""
+        """Search ICD codes from structured patient data."""
         try:
-            if not clinical_text or not isinstance(clinical_text, str):
-                raise ValueError(f"Invalid clinical text: {clinical_text}")
-
-            if limit < 1:
-                limit = 5
-
-            # Refine text if requested
-            if use_gemini_refinement and self.llm:
-                queries = self.refine_clinical_text_with_gemini(clinical_text)
+            # Generate clinical narrative
+            if use_gemini and self.llm:
+                clinical_narrative = self.generate_clinical_narrative(patient_data)
             else:
-                queries = [clinical_text]
+                clinical_narrative = patient_data.get("doctorRemarks", str(patient_data))
 
-            detailed_results = {
-                "original_text": str(clinical_text),
-                "refined_queries": [str(q) for q in queries],
-                "results_by_query": [],
-                "error": None
+            # Search for ICD codes
+            icd_codes = self.search_icd_codes(
+                clinical_narrative,
+                limit=limit,
+                use_gemini_refinement=False  # Already used Gemini for narrative
+            )
+
+            return {
+                "clinical_narrative": clinical_narrative,
+                "icd_codes": icd_codes,
+                "total_matches": len(icd_codes)
             }
 
-            if not queries:
-                detailed_results["error"] = "No queries to search"
-                return detailed_results
-
-            # Search for each query
-            for query_text in queries:
-                try:
-                    embedding = self.text_to_embedding(query_text)
-                    embedding = [float(x) for x in embedding]
-
-                    search_results = self.qdrant_client.query_points(
-                        collection_name=self.collection_name,
-                        query=embedding,
-                        limit=limit,
-                        with_payload=True
-                    )
-
-                    query_results = {
-                        "query": str(query_text),
-                        "codes": [
-                            {
-                                "code": str(point.payload.get('code', 'N/A')),
-                                "description": str(point.payload.get('short', 'N/A')),
-                                "score": float(point.score)
-                            }
-                            for point in search_results.points
-                        ],
-                        "error": None
-                    }
-
-                    detailed_results["results_by_query"].append(query_results)
-
-                except Exception as e:
-                    logger.error(f"Error searching query '{query_text}': {e}")
-                    query_results = {
-                        "query": str(query_text),
-                        "codes": [],
-                        "error": str(e)
-                    }
-                    detailed_results["results_by_query"].append(query_results)
-
-            return detailed_results
-
-        except ValueError as e:
-            logger.error(f"Invalid input: {e}")
-            raise
         except Exception as e:
-            logger.error(f"Unexpected error in search_icd_codes_detailed: {e}")
+            logger.error(f"Error in search_icd_codes_from_patient_data: {e}")
             raise

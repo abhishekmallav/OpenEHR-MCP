@@ -97,7 +97,7 @@ if response_line:
 
 # Test the suggest_icd_codes tool
 print("\n" + "─" * 80)
-print("Testing: 'cholera'")
+print("Testing: 'severe diarrhea and dehydration'")
 print("─" * 80)
 
 tool_call = {
@@ -107,7 +107,7 @@ tool_call = {
     "params": {
         "name": "suggest_icd_codes",
         "arguments": {
-            "clinical_text": "cholera",
+            "clinical_text": "severe diarrhea and dehydration",
             "limit": 5
         }
     }
